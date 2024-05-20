@@ -1,0 +1,77 @@
+// //old way of importing
+// // const http=require("http");
+// // const temp=require("./features");
+
+// //new way of importing
+// import http from "http"
+// import fs from "fs"//this module is used to read and write any file
+// import path from "path"
+// import temp, { temp1, temp2 } from "./features.js"//for named export name should be exactly same , but for default export any name is fine
+// import * as myObj from "./features.js"
+
+
+
+// console.log(temp);
+// console.log(temp1);
+// console.log(temp2);
+// console.log(myObj);
+// console.log(myObj.tempFunction());
+// // console.log(http);
+
+// const syncHome = fs.readFileSync("./index.html");//readFileSync() is synchronous so it will be executed in a normal flow
+// // console.log(syncHome);
+
+// console.log(path.extname("/home/random/wow.html"));
+
+// const server = http.createServer((req, res) => {//creating the server
+//     console.log("--------------------");//////////this will work when you will hit the URL//////////
+//     console.log(req.method);
+//     console.log(req.url);
+//     if (req.url === '/') {
+//         // fs.readFile("./index.html",(err,data)=>{//readfile() is asynchronous so it will be executed at last
+//         //     res.end(data);
+//         // })
+//         res.end(syncHome);
+//     }
+//     else if (req.url === '/about') {
+//         res.end("<h1>ABOUT PAGE</h1>");
+//     }
+//     else if (req.url === '/contact') {
+//         res.end("<h1>CONTACT PAGE</h1>");
+//     }
+//     else {
+//         res.end(`<h1>LOADING...${myObj.tempFunction()}</h1>`);
+//     }
+// })
+
+// server.listen(5000, () => {//5000 is port number
+//     console.log("Server is working");
+// })
+
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////AFTER INSTALLING EXPRESS/////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////////////////////////
+import express from 'express';
+// import fs from "fs";
+import path from "path";
+const server = express();//exactly same as creating server(http.createServer((req, res){})
+
+server.get("/", (req, res, next) => {
+    // res.send("HI");
+    // res.sendStatus(500);
+    // res.json({
+    //     success : true,
+    //     products : []
+    // })
+    // res.status(500).send("Coming from chaining");//chaining
+    console.log(path.resolve());//will give the current path
+    const pathlocation = path.join(path.resolve(),"./index.html");
+    res.sendFile(pathlocation);
+})
+
+server.listen(5000, () => {
+    console.log("Server is Working");
+})
+// 
+
