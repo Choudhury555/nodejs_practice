@@ -57,6 +57,16 @@ import express from 'express';
 import path from "path";
 const server = express();//exactly same as creating server(http.createServer((req, res){})
 
+//set this line(then you do not have to write the .ejs extension again and again)
+server.set("view engine","ejs");//setting it for dynamic files
+
+//To access static file use express.static()
+// console.log(path.join(path.resolve(),"public"));
+//express.static(path.join(path.resolve(),'public'))//this is a "middleware"
+// to use a "middleware" we need to use the ".use" keyword
+server.use(express.static(path.join(path.resolve(),'public')));//setting public folder as static files
+
+
 server.get("/", (req, res, next) => {
     // res.send("HI");
     // res.sendStatus(500);
@@ -65,9 +75,15 @@ server.get("/", (req, res, next) => {
     //     products : []
     // })
     // res.status(500).send("Coming from chaining");//chaining
-    console.log(path.resolve());//will give the current path
-    const pathlocation = path.join(path.resolve(),"./index.html");
-    res.sendFile(pathlocation);
+
+
+    // console.log(path.resolve());//will give the current path
+    // const pathlocation = path.join(path.resolve(),"./views/index.html");
+    // res.sendFile(pathlocation);
+
+    //////////////These are after installing "ejs//////////////
+    res.render("index.ejs",{name:"Choudhury Abhisek Panda"})//render is used to render dynamic data(this "index" will refer to /views/index.ejs)
+    
 })
 
 server.listen(5000, () => {
