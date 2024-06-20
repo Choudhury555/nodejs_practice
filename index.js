@@ -53,6 +53,7 @@
 ///////////////////////////////////////AFTER INSTALLING EXPRESS/////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 import express from 'express';
+import mongoose from 'mongoose';
 // import fs from "fs";
 import path from "path";
 const server = express();//exactly same as creating server(http.createServer((req, res){})
@@ -65,7 +66,9 @@ server.set("view engine","ejs");//setting it for dynamic files
 //express.static(path.join(path.resolve(),'public'))//this is a "middleware"
 // to use a "middleware" we need to use the ".use" keyword
 server.use(express.static(path.join(path.resolve(),'public')));//setting public folder as static files
+server.use(express.urlencoded({extended:true}));//using this middleware for accesing data from "form(index.ejs)"
 
+const users=[];
 
 server.get("/", (req, res, next) => {
     // res.send("HI");
@@ -85,6 +88,43 @@ server.get("/", (req, res, next) => {
     res.render("index.ejs",{name:"Choudhury Abhisek Panda"})//render is used to render dynamic data(this "index" will refer to /views/index.ejs)
     
 })
+
+server.get("/success",(req,res)=>{
+    res.render("success.ejs");
+})
+
+server.get("/users",(req,res)=>{
+    res.json({users});
+})
+
+server.post("/contact",async (req,res)=>{
+    // console.log(req.body);
+    await Message.create({name: req.body.name,email: req.body.email});//here we are stroring our data in DB
+    res.redirect("success");//or you can directly use "render()"
+})
+
+server.get("/userdetails",async (req,res)=>{
+    const dbData=await Message.find();
+    res.send(dbData);
+})
+
+////////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////////
+//MongoDB start
+mongoose.connect("mongodb://0.0.0.0:27017/",{
+    dbName:"practice",
+}).then(()=>console.log("Database Connected")).catch((e)=>console.log(e));
+
+//Creating Scehma for adding data to our collection(table) i.e. practice
+const messageschema = new mongoose.Schema({
+    name:String,
+    email:String
+});
+
+//Creating a model(used to call the collection)
+const Message=mongoose.model("Message",messageschema);//it will create the schema as (message+'s' = i.e. messages)or("abc"=>"abcs")
+
 
 server.listen(5000, () => {
     console.log("Server is Working");
