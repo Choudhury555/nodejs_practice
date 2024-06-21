@@ -54,6 +54,7 @@
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 import express from 'express';
 import mongoose from 'mongoose';
+import cookieParser from 'cookie-parser';
 // import fs from "fs";
 import path from "path";
 const server = express();//exactly same as creating server(http.createServer((req, res){})
@@ -67,8 +68,10 @@ server.set("view engine","ejs");//setting it for dynamic files
 // to use a "middleware" we need to use the ".use" keyword
 server.use(express.static(path.join(path.resolve(),'public')));//setting public folder as static files
 server.use(express.urlencoded({extended:true}));//using this middleware for accesing data from "form(index.ejs)"
+server.use(express.json());//this middleware is used to receive data from POSTMAN/any api platform as "json"
+server.use(cookieParser());//used to access cookie
 
-const users=[];
+// const users=[];
 
 server.get("/", (req, res, next) => {
     // res.send("HI");
@@ -85,28 +88,26 @@ server.get("/", (req, res, next) => {
     // res.sendFile(pathlocation);
 
     //////////////These are after installing "ejs//////////////
-    res.render("index.ejs",{name:"Choudhury Abhisek Panda"})//render is used to render dynamic data(this "index" will refer to /views/index.ejs)
-    
+    // res.render("index.ejs",{name:"Choudhury Abhisek Panda"})//render is used to render dynamic data(this "index" will refer to /views/index.ejs)
+
+    //authentication chapter
+    console.log(req.cookies);//for cookies==>install (cookie-parser)i.e. "npm i cookie-parser" and then import cookie-parser and then use the middleware(server.use(cookieParser());)
+    const {token}=req.cookies;
+
+    if(token){
+        res.render("logout.ejs");
+    }else{
+        res.render("login.ejs");
+    }
 })
 
 server.get("/success",(req,res)=>{
     res.render("success.ejs");
 })
 
-server.get("/users",(req,res)=>{
-    res.json({users});
-})
-
-server.post("/contact",async (req,res)=>{
-    // console.log(req.body);
-    await Message.create({name: req.body.name,email: req.body.email});//here we are stroring our data in DB
-    res.redirect("success");//or you can directly use "render()"
-})
-
-server.get("/userdetails",async (req,res)=>{
-    const dbData=await Message.find();
-    res.send(dbData);
-})
+// server.get("/users",(req,res)=>{
+//     res.json({users});
+// })
 
 ////////////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////////
@@ -124,6 +125,79 @@ const messageschema = new mongoose.Schema({
 
 //Creating a model(used to call the collection)
 const Message=mongoose.model("Message",messageschema);//it will create the schema as (message+'s' = i.e. messages)or("abc"=>"abcs")
+
+
+///////////////////CRUD through POSTMAN///////////////////
+//Create new data
+server.post("/contact",async (req,res)=>{
+    console.log(req.body);
+    await Message.create({name: req.body.name,email: req.body.email});//here we are stroring our data in DB
+
+    //or user these below 2 lines instaed of above line
+    // let data= new Message({name: req.body.name,email: req.body.email});//here we are stroring our data in DB
+    // await data.save();
+
+    res.redirect("success");//or you can directly use "render()"
+})
+
+//Read
+server.get("/userdetails",async (req,res)=>{
+    const dbData=await Message.find();//Find data from DB
+    res.send(dbData);
+})
+
+// Update
+server.put("/update/:name",async (req,res)=>{
+    console.log(req.params);
+    console.log(req.body);
+    // const {name}=req.params;
+    // const data=req.body;
+    let response=await Message.updateOne({...req.params},{...req.body});
+    res.send(response);
+})
+
+//Delete
+server.delete("/deletedetails",async (req,res) => {
+    let response=await Message.deleteOne(req.body);
+    res.send(response);
+})
+
+
+/////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////AUTHENTICATION////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////////////////////////
+//Only refer to "login.ejs" page
+server.post("/login",(req,res)=>{
+    res.cookie("token","iamin",{
+        httpOnly:true,
+        expires:new Date(Date.now()+60*1000)
+    });
+    res.redirect("/");
+})
+
+server.get("/logout",(req,res)=>{
+    res.cookie("token","null",{ //here we are making the cookie "null"
+        httpOnly:true,
+        expires:new Date(Date.now())//cookie will expire at the current moment
+    });
+    res.redirect("/");
+})
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 server.listen(5000, () => {
