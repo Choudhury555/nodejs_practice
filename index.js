@@ -55,8 +55,10 @@
 import express from 'express';
 import mongoose from 'mongoose';
 import cookieParser from 'cookie-parser';
+import jwt from "jsonwebtoken";//JWT stands for JSON Web Token, which is an open standard that allows for the secure transmission of information between parties as a JSON object.
 // import fs from "fs";
 import path from "path";
+import { log } from 'console';
 const server = express();//exactly same as creating server(http.createServer((req, res){})
 
 //set this line(then you do not have to write the .ejs extension again and again)
@@ -73,33 +75,25 @@ server.use(cookieParser());//used to access cookie
 
 // const users=[];
 
-server.get("/", (req, res, next) => {
-    // res.send("HI");
-    // res.sendStatus(500);
-    // res.json({
-    //     success : true,
-    //     products : []
-    // })
-    // res.status(500).send("Coming from chaining");//chaining
+
+// server.get("/", (req, res, next) => {
+//     // res.send("HI");
+//     // res.sendStatus(500);
+//     // res.json({
+//     //     success : true,
+//     //     products : []
+//     // })
+//     // res.status(500).send("Coming from chaining");//chaining
 
 
-    // console.log(path.resolve());//will give the current path
-    // const pathlocation = path.join(path.resolve(),"./views/index.html");
-    // res.sendFile(pathlocation);
+//     // console.log(path.resolve());//will give the current path
+//     // const pathlocation = path.join(path.resolve(),"./views/index.html");
+//     // res.sendFile(pathlocation);
 
-    //////////////These are after installing "ejs//////////////
-    // res.render("index.ejs",{name:"Choudhury Abhisek Panda"})//render is used to render dynamic data(this "index" will refer to /views/index.ejs)
+//     //////////////These are after installing "ejs//////////////
+//     // res.render("index.ejs",{name:"Choudhury Abhisek Panda"})//render is used to render dynamic data(this "index" will refer to /views/index.ejs)
 
-    //authentication chapter
-    console.log(req.cookies);//for cookies==>install (cookie-parser)i.e. "npm i cookie-parser" and then import cookie-parser and then use the middleware(server.use(cookieParser());)
-    const {token}=req.cookies;
-
-    if(token){
-        res.render("logout.ejs");
-    }else{
-        res.render("login.ejs");
-    }
-})
+// })
 
 server.get("/success",(req,res)=>{
     res.render("success.ejs");
@@ -168,9 +162,37 @@ server.delete("/deletedetails",async (req,res) => {
 ///////////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////AUTHENTICATION////////////////////////////////////////
 /////////////////////////////////////////////////////////////////////////////////////////
+
+const isAuthenticated = async (req,res,next) =>{//this is our own handlers(or we can say it as our own "miidleWare")
+    console.log(req.cookies);//for cookies==>install (cookie-parser)i.e. "npm i cookie-parser" and then import cookie-parser and then use the middleware(server.use(cookieParser());)
+    const {token}=req.cookies;
+    
+    if(token){
+        const decodeToken = jwt.verify(token,"randomsecretkey");//this will decode our token
+        console.log(decodeToken);
+        req.userFullData = await User.findById(decodeToken._id);
+        //These above 3 lines are not required generally 
+        
+        next();//it will refer to the next handlers of "isAuthenticated"
+    }else{
+        res.render("login.ejs");
+    }
+}
+
+server.get("/", isAuthenticated , (req, res) => {
+    //authentication chapter
+    res.render("logout.ejs");
+})
+
 //Only refer to "login.ejs" page
-server.post("/login",(req,res)=>{
-    res.cookie("token","iamin",{
+server.post("/login",async (req,res)=>{
+    console.log(req.body);
+    const userdata = await User.create(req.body);//this will inser the req.body to DB
+
+    const token =  jwt.sign({_id:userdata._id},"randomsecretkey"); //this will create an new jwt token ("randomsecretvalue" is a secret key to decode the data)
+    console.log(token);
+    
+    res.cookie("token",token,{
         httpOnly:true,
         expires:new Date(Date.now()+60*1000)
     });
@@ -185,8 +207,13 @@ server.get("/logout",(req,res)=>{
     res.redirect("/");
 })
 
+// Now we will create a new schema in Mongo and also we will create a model
+const userschema = new mongoose.Schema({
+    name:String,
+    email:String
+});
 
-
+const User=mongoose.model("User",userschema);
 
 
 
