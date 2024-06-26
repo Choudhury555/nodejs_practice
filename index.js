@@ -55,6 +55,7 @@
 import express from 'express';
 import mongoose from 'mongoose';
 import cookieParser from 'cookie-parser';
+import bcrypt from 'bcrypt'//used to hash the password in DB
 import jwt from "jsonwebtoken";//JWT stands for JSON Web Token, which is an open standard that allows for the secure transmission of information between parties as a JSON object.
 // import fs from "fs";
 import path from "path";
@@ -164,15 +165,16 @@ server.delete("/deletedetails",async (req,res) => {
 /////////////////////////////////////////////////////////////////////////////////////////
 
 const isAuthenticated = async (req,res,next) =>{//this is our own handlers(or we can say it as our own "miidleWare")
-    console.log(req.cookies);//for cookies==>install (cookie-parser)i.e. "npm i cookie-parser" and then import cookie-parser and then use the middleware(server.use(cookieParser());)
+    // console.log(req.cookies);//for cookies==>install (cookie-parser)i.e. "npm i cookie-parser" and then import cookie-parser and then use the middleware(server.use(cookieParser());)
     const {token}=req.cookies;
     
     if(token){
         const decodeToken = jwt.verify(token,"randomsecretkey");//this will decode our token
-        console.log(decodeToken);
-        req.userFullData = await User.findById(decodeToken._id);
-        //These above 3 lines are not required generally 
-        
+        // console.log(decodeToken);
+        req.userFullData = await User.findById(decodeToken._id);//we are fetching current user data using the decoded token(and setting it to a new property inside "req" object)
+        //if we will add this "isAuthenticated" function in any (GET,POST,PUT,DELETE)method then we can access the "req.userFullData" inside all other handlers which is after "isAuthenticated" function
+
+
         next();//it will refer to the next handlers of "isAuthenticated"
     }else{
         res.render("login.ejs");
@@ -181,16 +183,52 @@ const isAuthenticated = async (req,res,next) =>{//this is our own handlers(or we
 
 server.get("/", isAuthenticated , (req, res) => {
     //authentication chapter
-    res.render("logout.ejs");
+    // console.log(req.userFullData);//this is coming from "isAuthenticated" function above
+    res.render("logout.ejs",{name:req.userFullData.name});
+})
+
+server.get("/register",(req,res)=>{
+    res.render("register.ejs");
+})
+
+server.get("/login",(req,res)=>{
+    res.render("login.ejs");
 })
 
 //Only refer to "login.ejs" page
 server.post("/login",async (req,res)=>{
-    console.log(req.body);
-    const userdata = await User.create(req.body);//this will inser the req.body to DB
+    // console.log(req.body);
+    let checkIfLoggedIn = await User.findOne({email:req.body.email});
+    // console.log(checkIfLoggedIn);
+    if( ! checkIfLoggedIn){
+        res.redirect("/register");
+    }
+    else{
+        const isPasswordCorrct = await bcrypt.compare(req.body.password,checkIfLoggedIn.password)
+        if(!isPasswordCorrct){
+            return res.render("login.ejs",{email:req.body.email,message: "Incorrect Password"});
+        }
+        // console.log(checkIfLoggedIn._id);
+        const token =  jwt.sign({_id:checkIfLoggedIn._id},"randomsecretkey"); //this will create an new jwt token ("randomsecretvalue" is a secret key to decode the data)
+        res.cookie("token",token,{
+            httpOnly:true,
+            expires:new Date(Date.now()+60*1000)
+        });       
+        res.redirect("/");
+    }
+})
 
+server.post("/register",async (req,res) => {
+    const {name,email,password} = req.body;
+    let checkIfRegistered = await User.findOne({email:req.body.email});
+    if(checkIfRegistered){
+        return res.redirect("/login");
+    }
+
+    const hashedPassword = await bcrypt.hash(password,10);
+    const userdata = await User.create({name,email,password:hashedPassword});//this will inser the req.body to DB
     const token =  jwt.sign({_id:userdata._id},"randomsecretkey"); //this will create an new jwt token ("randomsecretvalue" is a secret key to decode the data)
-    console.log(token);
+    // console.log(token);
     
     res.cookie("token",token,{
         httpOnly:true,
@@ -210,7 +248,8 @@ server.get("/logout",(req,res)=>{
 // Now we will create a new schema in Mongo and also we will create a model
 const userschema = new mongoose.Schema({
     name:String,
-    email:String
+    email:String,
+    password:String
 });
 
 const User=mongoose.model("User",userschema);
